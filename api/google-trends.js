@@ -4,11 +4,11 @@ export default async function handler(req, res) {
 
   try {
     const response = await fetch(
-      `https://google-trends8.p.rapidapi.com/dailytrends?geo=${region}&hl=${lang}`,
+      `https://google-trends-by-api-ninjas.p.rapidapi.com/v1/dailytrends?geo=${region}&hl=${lang}`,
       {
         method: "GET",
         headers: {
-          "x-rapidapi-host": "google-trends8.p.rapidapi.com",
+          "x-rapidapi-host": "google-trends-by-api-ninjas.p.rapidapi.com",
           "x-rapidapi-key": process.env.RAPIDAPI_KEY,
         },
       }
