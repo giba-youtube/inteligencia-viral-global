@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
   // Se nenhum país for informado na URL, busca globalmente
-  const country = req.query.country || "global";
+  const country = req.query.country || "US";
 
   try {
     // Faz a requisição para o endpoint correto da Trendly API
