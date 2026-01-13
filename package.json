@@ -1,0 +1,8 @@
+{
+  "name": "inteligencia-viral-global",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "google-trends-api": "^4.9.2"
+  }
+}
