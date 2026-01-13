@@ -1,40 +1,69 @@
-export default async function handler(req, res) {
-  const { q } = req.query;
-  if (!q) return res.status(400).json({ error: "Parâmetro 'q' obrigatório." });
+export const config = {
+  runtime: "edge",
+};
+
+export default async function handler(req) {
+  const { searchParams } = new URL(req.url);
+  const query = searchParams.get("q");
+
+  if (!query) {
+    return new Response(
+      JSON.stringify({ error: "Parâmetro 'q' é obrigatório." }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
 
   try {
-    const response = await fetch(
-      `https://trends.google.com/trends/api/explore?hl=pt-BR&tz=-180&req={"comparisonItem":[{"keyword":"${q}","geo":"BR","time":"now 7-d"}],"category":0,"property":""}`
-    );
+    // Cabeçalhos “humanos” pra enganar o Google
+    const headers = {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0 Safari/537.36",
+      "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+      "Referer": "https://trends.google.com.br/trends/explore",
+    };
 
-    const text = await response.text();
-    const clean = text.replace(")]}',", "");
+    // 1️⃣ Solicita os widgets da busca
+    const exploreUrl = `https://trends.google.com/trends/api/explore?hl=pt-BR&tz=-180&req={"comparisonItem":[{"keyword":"${query}","geo":"BR","time":"now 7-d"}],"category":0,"property":""}`;
+    const exploreResp = await fetch(exploreUrl, { headers });
+    const exploreTxt = await exploreResp.text();
 
-    const explore = JSON.parse(clean);
-    const token = explore.widgets?.find(w => w.id === "RELATED_QUERIES")?.token;
-    const request = explore.widgets?.find(w => w.id === "RELATED_QUERIES")?.request;
+    if (!exploreTxt.includes("widgets"))
+      throw new Error("A resposta do Google não contém widgets.");
 
-    if (!token || !request) throw new Error("Token não encontrado.");
+    const exploreJson = JSON.parse(exploreTxt.replace(")]}',", ""));
+    const widget = exploreJson.widgets.find((w) => w.id === "RELATED_QUERIES");
+    if (!widget) throw new Error("Widget RELATED_QUERIES não encontrado.");
 
-    const trendsUrl = `https://trends.google.com/trends/api/widgetdata/relatedsearches?hl=pt-BR&tz=-180&req=${encodeURIComponent(
-      JSON.stringify(request)
-    )}&token=${token}&tz=-180`;
+    const token = widget.token;
+    const reqObj = widget.request;
 
-    const relatedResponse = await fetch(trendsUrl);
-    const relatedText = await relatedResponse.text();
-    const relatedClean = relatedText.replace(")]}',", "");
-    const relatedData = JSON.parse(relatedClean);
+    // 2️⃣ Consulta os termos relacionados
+    const relatedUrl = `https://trends.google.com/trends/api/widgetdata/relatedsearches?hl=pt-BR&tz=-180&req=${encodeURIComponent(
+      JSON.stringify(reqObj)
+    )}&token=${token}`;
 
-    const ranked = relatedData.default?.rankedList?.[0]?.rankedKeyword || [];
+    const relResp = await fetch(relatedUrl, { headers });
+    const relTxt = await relResp.text();
 
-    const relatedQueries = ranked.map(item => ({
-      term: item.query,
-      value: item.value[0],
+    if (!relTxt.startsWith(")]}',")) throw new Error("Google retornou HTML em vez de JSON.");
+    const relJson = JSON.parse(relTxt.replace(")]}',", ""));
+
+    const ranked = relJson.default.rankedList[0].rankedKeyword.map((r) => ({
+      term: r.query,
+      value: r.value[0],
     }));
 
-    return res.status(200).json({ query: q, relatedQueries });
+    return new Response(
+      JSON.stringify({ query, relatedQueries: ranked }),
+      { headers: { "Content-Type": "application/json" } }
+    );
   } catch (err) {
-    console.error("Erro ao consultar Google Trends:", err);
-    return res.status(500).json({ error: "Erro ao consultar Google Trends." });
+    return new Response(
+      JSON.stringify({
+        error: "Falha ao consultar Google Trends.",
+        details: err.message,
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
 }
