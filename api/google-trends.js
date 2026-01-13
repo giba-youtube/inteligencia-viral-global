@@ -1,13 +1,15 @@
 export default async function handler(req, res) {
-  const country = req.query.country || "United States";
+  // Se nenhum país for informado na URL, busca globalmente
+  const country = req.query.country || "global";
 
   try {
+    // Faz a requisição para o endpoint correto da Trendly API
     const response = await fetch("https://trendly.p.rapidapi.com/realtime", {
       method: "POST",
       headers: {
         "content-type": "application/json",
         "x-rapidapi-host": "trendly.p.rapidapi.com",
-        "x-rapidapi-key": process.env.RAPIDAPI_KEY,
+        "x-rapidapi-key": process.env.RAPIDAPI_KEY, // variável configurada na Vercel
       },
       body: JSON.stringify({
         country,
@@ -17,7 +19,8 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    if (!data || Object.keys(data).length === 0 || data.message) {
+    // Caso não tenha resultados, envia uma mensagem amigável
+    if (!data || Object.keys(data).length === 0 || data.msg || data.message) {
       return res.status(200).json({
         message: `Nenhum dado encontrado para ${country}.`,
         suggestion: "Tente outro país ou amplie o intervalo de tempo.",
@@ -25,9 +28,11 @@ export default async function handler(req, res) {
       });
     }
 
-    res.status(200).json(data);
+    // Se tiver dados, retorna o JSON original da Trendly
+    return res.status(200).json(data);
   } catch (error) {
-    res.status(500).json({
+    // Captura e mostra qualquer erro que ocorrer
+    return res.status(500).json({
       error: "Falha ao consultar Trendly Realtime.",
       details: error.message,
     });
