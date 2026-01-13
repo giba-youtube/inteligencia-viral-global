@@ -1,10 +1,10 @@
 export default async function handler(req, res) {
   const country = req.query.country || "United States";
 
-  // Calcula as datas automaticamente
+  // Calcula o intervalo dos últimos 30 dias
   const end = new Date();
   const start = new Date();
-  start.setDate(end.getDate() - 30); // últimos 30 dias
+  start.setDate(end.getDate() - 30);
 
   try {
     const response = await fetch("https://trendly.p.rapidapi.com/topics", {
@@ -12,7 +12,7 @@ export default async function handler(req, res) {
       headers: {
         "content-type": "application/json",
         "x-rapidapi-host": "trendly.p.rapidapi.com",
-        "x-rapidapi-key": process.env.RAPIDAPI_KEY, // variável configurada na Vercel
+        "x-rapidapi-key": process.env.RAPIDAPI_KEY,
       },
       body: JSON.stringify({
         keywords: ["YouTube", "TikTok", "Netflix"],
@@ -27,16 +27,13 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    // Se a API não retornar dados úteis
     if (!data || Object.keys(data).length === 0) {
       return res.status(200).json({
-        message: "Nenhum dado encontrado para o período especificado.",
-        suggestion:
-          "Tente outro país ou intervalo de datas maior (ex: 90 dias).",
+        message: "Nenhum dado encontrado para o período.",
+        suggestion: "Tente outro país ou amplie o intervalo de tempo.",
       });
     }
 
-    // Retorna os dados normalmente
     res.status(200).json(data);
   } catch (error) {
     res.status(500).json({
