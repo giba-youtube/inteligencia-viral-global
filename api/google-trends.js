@@ -1,38 +1,38 @@
-import googleTrends from "google-trends-api";
-
 export default async function handler(req, res) {
+  const { q } = req.query;
+
+  if (!q) {
+    return res.status(400).json({ error: "Parâmetro 'q' obrigatório." });
+  }
+
   try {
-    const { q } = req.query;
-    if (!q) return res.status(400).json({ error: "Parâmetro 'q' obrigatório." });
+    // Chamada direta à API pública do Google Trends
+    const response = await fetch(
+      `https://trends.google.com/trends/api/widgetdata/relatedsearches?hl=pt-BR&tz=-180&req={"restriction":{"type":"COUNTRY","geo":{"country":"BR"},"keyword":"${q}","time":"now 7-d"},"keywordType":"QUERY","metric":["TOP","RISING"],"trendinessSettings":{"compareTime":"now 7-d","time":"now 7-d"},"requestOptions":{"property":"","backend":"IZG","category":0}}&token=APP6_UEAAAAAZcKJPB7iEpwhQibcTuxQv08ymZKp3_dC`,
+      {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+          "Accept": "application/json",
+        },
+      }
+    );
 
-    const results = await googleTrends.relatedQueries({
-      keyword: q,
-      hl: "pt-BR",
-      geo: "BR",
-      timeframe: "now 7-d",
-      gprop: "youtube"
-    });
+    const text = await response.text();
+    const clean = text.replace(")]}',", ""); // remove prefixo de segurança
+    const data = JSON.parse(clean);
 
-    const parsed = JSON.parse(results);
-
-    const relatedQueries = (parsed?.default?.rankedList?.[0]?.rankedKeyword || [])
-      .slice(0, 10)
-      .map(item => ({
-        term: item.query,
-        value: item.value[0]
-      }));
-
-    const relatedTopics = (parsed?.default?.rankedList?.[1]?.rankedKeyword || [])
-      .slice(0, 10)
-      .map(item => item.query);
+    const ranked = data.default.rankedList?.[0]?.rankedKeyword || [];
+    const relatedQueries = ranked.slice(0, 10).map(item => ({
+      term: item.query,
+      value: item.value[0],
+    }));
 
     return res.status(200).json({
       query: q,
-      relatedTopics,
-      relatedQueries
+      relatedQueries,
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erro ao consultar Google Trends." });
+    console.error("Erro ao consultar Trends:", err);
+    return res.status(500).json({ error: "Erro ao consultar Google Trends." });
   }
 }
