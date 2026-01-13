@@ -1,37 +1,45 @@
 export default async function handler(req, res) {
-  const query = req.query.q || "futebol";
+  const region = req.query.region || "BR"; // Região padrão: Brasil
+  const lang = req.query.lang || "pt-BR";
 
   try {
-    // Endpoint alternativo do Google Trends
     const response = await fetch(
-      `https://trends.google.com/trends/api/explore?hl=pt-BR&tz=-180&req={"comparisonItem":[{"keyword":"${query}","geo":"BR","time":"now 7-d"}],"category":0,"property":""}`,
+      `https://google-trends8.p.rapidapi.com/trendings?region_code=${region}&hl=${lang}`,
       {
+        method: "GET",
         headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "x-rapidapi-host": "google-trends8.p.rapidapi.com",
+          "x-rapidapi-key": process.env.RAPIDAPI_KEY, // sua chave da RapidAPI
         },
       }
     );
 
-    const text = await response.text();
-
-    // Remove o prefixo “)]}',” do JSON do Google Trends
-    const jsonText = text.replace(")]}',", "").trim();
-    const data = JSON.parse(jsonText);
-
-    if (!data.widgets) {
-      throw new Error("A resposta do Google não contém widgets válidos.");
+    if (!response.ok) {
+      throw new Error(`Erro HTTP ${response.status}`);
     }
 
-    // Filtra o primeiro widget de interesse
-    const widget = data.widgets.find(
-      (w) => w.request && w.request.comparisonItem
-    );
+    const data = await response.json();
+
+    // Validação básica
+    if (!data || !data.trendingSearchesDays) {
+      throw new Error("Resposta inesperada da API RapidAPI");
+    }
+
+    // Extrai as tendências principais do dia
+    const trends = data.trendingSearchesDays[0].trendingSearches.map((t) => ({
+      title: t.title.query,
+      traffic: t.formattedTraffic,
+      articles: t.articles?.map((a) => ({
+        title: a.title,
+        url: a.url,
+        source: a.source,
+      })),
+    }));
 
     res.status(200).json({
-      query,
-      widgets: data.widgets.length,
-      requestType: widget?.title || "Sem título",
+      region,
+      count: trends.length,
+      trends,
     });
   } catch (error) {
     res.status(500).json({
