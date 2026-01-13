@@ -1,10 +1,15 @@
 export default async function handler(req, res) {
+  // Permite personalização via query string
   const country = req.query.country || "United States";
+  const period = parseInt(req.query.period || "90"); // dias
+  const keywords = req.query.keywords
+    ? req.query.keywords.split(",")
+    : ["YouTube", "TikTok", "Netflix"];
 
-  // Calcula o intervalo dos últimos 30 dias
+  // Calcula intervalo de tempo
   const end = new Date();
   const start = new Date();
-  start.setDate(end.getDate() - 30);
+  start.setDate(end.getDate() - period);
 
   try {
     const response = await fetch("https://trendly.p.rapidapi.com/topics", {
@@ -15,7 +20,7 @@ export default async function handler(req, res) {
         "x-rapidapi-key": process.env.RAPIDAPI_KEY,
       },
       body: JSON.stringify({
-        keywords: ["YouTube", "TikTok", "Netflix"],
+        keywords,
         start: start.toISOString(),
         end: end.toISOString(),
         country,
@@ -30,7 +35,8 @@ export default async function handler(req, res) {
     if (!data || Object.keys(data).length === 0) {
       return res.status(200).json({
         message: "Nenhum dado encontrado para o período.",
-        suggestion: "Tente outro país ou amplie o intervalo de tempo.",
+        usedParams: { country, period, keywords },
+        suggestion: "Tente outro país, palavras ou um intervalo maior.",
       });
     }
 
