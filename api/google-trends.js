@@ -1,24 +1,17 @@
 export default async function handler(req, res) {
-  // País padrão (pode ser alterado via query: ?country=BR)
   const country = req.query.country || "United States";
 
   try {
-    // Faz a requisição para o endpoint correto
-    const response = await fetch("https://trendly.p.rapidapi.com/topics", {
+    const response = await fetch("https://trendly.p.rapidapi.com/hot-trending", {
       method: "POST",
       headers: {
         "content-type": "application/json",
         "x-rapidapi-host": "trendly.p.rapidapi.com",
-        "x-rapidapi-key": process.env.RAPIDAPI_KEY, // usa a chave salva na Vercel
+        "x-rapidapi-key": process.env.RAPIDAPI_KEY,
       },
       body: JSON.stringify({
-        keywords: ["YouTube", "TikTok", "Netflix"], // até 5 palavras
-        start: "2025-12-01T00:00:00Z",              // início do período
-        end: "2026-01-13T00:00:00Z",                // fim do período
-        country: country,                           // país
-        region: "",                                 // opcional
-        category: "",                               // opcional
-        gprop: "",                                  // web, news, images, etc. (ou vazio)
+        country: country,
+        lang: "en",
       }),
     });
 
@@ -31,10 +24,13 @@ export default async function handler(req, res) {
       });
     }
 
-    return res.status(200).json(data);
+    return res.status(200).json({
+      country,
+      results: data,
+    });
   } catch (error) {
     return res.status(500).json({
-      error: "Erro ao consultar Trendly /topics.",
+      error: "Erro ao consultar Trendly /hot-trending.",
       details: error.message,
     });
   }
