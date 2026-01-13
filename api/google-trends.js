@@ -1,10 +1,10 @@
 export default async function handler(req, res) {
-  const region = req.query.region || "US";
-  const lang = req.query.lang || "en-US";
+  const region = req.query.region || "BR";
+  const lang = req.query.lang || "pt-BR";
 
   try {
     const response = await fetch(
-      `https://google-trends8.p.rapidapi.com/trendings?region_code=${region}&hl=${lang}`,
+      `https://google-trends8.p.rapidapi.com/dailytrends?geo=${region}&hl=${lang}`,
       {
         method: "GET",
         headers: {
